@@ -55,23 +55,32 @@ where each recommended item includes `sku`, `name`, `trend`, `quantity`
 (pulled from the matching inventory record).
 
 **Acceptance criteria:**
-- [ ] `budget=0` (or omitted) returns `recommended_items: []` and a correct
+- [x] `budget=0` (or omitted) returns `recommended_items: []` and a correct
       non-zero `max_budget`
-- [ ] A budget large enough to cover everything returns all forecast items
+- [x] A budget large enough to cover everything returns all forecast items
       with positive shortfall
-- [ ] A mid-size budget returns a subset whose summed `line_total` is
+- [x] A mid-size budget returns a subset whose summed `line_total` is
       `<= budget`, and no single returned item's cost exceeds `budget`
-- [ ] Items with zero or negative shortfall (forecast ≤ current demand) are
+- [x] Items with zero or negative shortfall (forecast ≤ current demand) are
       never recommended
-- [ ] A forecast SKU with no matching inventory record is skipped, not a
+- [x] A forecast SKU with no matching inventory record is skipped, not a
       500 error
 
 **Verification:**
-- [ ] New tests in `tests/backend/test_restocking.py` (per `backend-api-test`
+- [x] New tests in `tests/backend/test_restocking.py` (per `backend-api-test`
       skill) cover: empty budget, full-coverage budget, partial budget,
       zero-shortfall exclusion, unmatched-SKU handling
-- [ ] `cd tests && uv run pytest backend/test_restocking.py -v` passes
-- [ ] Manual check via `http://localhost:8001/docs`
+- [x] `cd server && uv run pytest ../tests/backend/test_restocking.py -v -c ../tests/pytest.ini` — 9/9 pass
+- [x] Manual check via curl against the running server
+
+**Note (data fix, approved by user):** `server/data/demand_forecasts.json`
+had 8 of 9 `item_sku` values referencing SKUs that don't exist in
+`inventory.json` at all (independently-generated fixtures, never
+cross-referenced). Joining strictly by SKU as designed would have made the
+feature recommend at most one item ever. Remapped those 8 records to real
+inventory SKUs (keeping `current_demand`/`forecasted_demand`/`trend`
+unchanged), which also required updating a hardcoded-SKU assertion in
+`tests/backend/test_misc_endpoints.py::test_demand_forecast_has_new_items`.
 
 **Dependencies:** Task 1
 

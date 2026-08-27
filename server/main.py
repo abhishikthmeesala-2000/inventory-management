@@ -199,6 +199,55 @@ def get_backlog():
         result.append(item_dict)
     return result
 
+@app.get("/api/restocking/recommendations")
+def get_restocking_recommendations(budget: float = 0.0):
+    """Recommend restock items from demand forecasts that fit within budget.
+
+    Ranks by largest dollar shortfall first, then greedily fills the budget,
+    skipping (not stopping at) any item that doesn't fit so cheaper items
+    later in the ranking still get a chance.
+    """
+    inventory_by_sku = {item["sku"]: item for item in inventory_items}
+
+    candidates = []
+    for forecast in demand_forecasts:
+        inventory_item = inventory_by_sku.get(forecast["item_sku"])
+        if not inventory_item:
+            continue
+
+        shortfall_qty = max(forecast["forecasted_demand"] - forecast["current_demand"], 0)
+        if shortfall_qty <= 0:
+            continue
+
+        line_total = round(shortfall_qty * inventory_item["unit_cost"], 2)
+        candidates.append({
+            "sku": inventory_item["sku"],
+            "name": inventory_item["name"],
+            "trend": forecast["trend"],
+            "quantity": shortfall_qty,
+            "unit_cost": inventory_item["unit_cost"],
+            "line_total": line_total,
+            "lead_time_days": inventory_item["lead_time_days"],
+        })
+
+    candidates.sort(key=lambda c: c["line_total"], reverse=True)
+    max_budget = round(sum(c["line_total"] for c in candidates), 2)
+
+    recommended_items = []
+    remaining_budget = budget
+    for candidate in candidates:
+        if candidate["line_total"] <= remaining_budget:
+            recommended_items.append(candidate)
+            remaining_budget -= candidate["line_total"]
+
+    budget_used = round(sum(c["line_total"] for c in recommended_items), 2)
+
+    return {
+        "max_budget": max_budget,
+        "budget_used": budget_used,
+        "recommended_items": recommended_items,
+    }
+
 @app.get("/api/dashboard/summary")
 def get_dashboard_summary(
     warehouse: Optional[str] = None,
