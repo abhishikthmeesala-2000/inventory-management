@@ -161,16 +161,16 @@ component: Restocking }` to `client/src/main.js`. Add a "Restocking" nav
 link in `client/src/App.vue` alongside the existing tabs.
 
 **Acceptance criteria:**
-- [ ] `api.getRestockRecommendations(budget)` calls
+- [x] `api.getRestockRecommendations(budget)` calls
       `GET /api/restocking/recommendations?budget=...`
-- [ ] `api.placeRestockOrder(items)` calls `POST /api/restocking/orders`
-- [ ] `api.getRestockOrders()` calls `GET /api/restocking/orders`
-- [ ] `/restocking` route renders (even with a placeholder component) and a
+- [x] `api.placeRestockOrder(items)` calls `POST /api/restocking/orders`
+- [x] `api.getRestockOrders()` calls `GET /api/restocking/orders`
+- [x] `/restocking` route renders (even with a placeholder component) and a
       nav link to it appears in the top nav
 
 **Verification:**
-- [ ] `npm run build` succeeds with no errors
-- [ ] Manual/Playwright: navigating to `http://localhost:3000/restocking` loads without console errors
+- [x] `npm run build` succeeds with no errors
+- [x] Manual/Playwright: navigating to `http://localhost:3000/restocking` loads without console errors (commit `884b47b`)
 
 **Dependencies:** Task 3 (needs real endpoints to call)
 
@@ -198,18 +198,18 @@ view conventions (raw data in refs, derived display in computed
 properties).
 
 **Acceptance criteria:**
-- [ ] Slider range is `[0, max_budget]` from the API, not hardcoded
-- [ ] Moving the slider updates the recommended items list (debounced, not
+- [x] Slider range is `[0, max_budget]` from the API, not hardcoded
+- [x] Moving the slider updates the recommended items list (debounced, not
       one request per pixel of drag)
-- [ ] Table shows every field listed above per recommended item, plus a
+- [x] Table shows every field listed above per recommended item, plus a
       budget-used vs. budget-selected summary
-- [ ] Empty state (budget = 0, or budget too small for any item) is handled
+- [x] Empty state (budget = 0, or budget too small for any item) is handled
       without layout breakage
 
 **Verification:**
-- [ ] Manual/Playwright check at `http://localhost:3000/restocking`:
-      drag slider, confirm list updates and stays within budget
-- [ ] No console errors/warnings during interaction
+- [x] Manual/Playwright check at `http://localhost:3000/restocking`:
+      drag slider, confirm list updates and stays within budget (commit `e332cdc`)
+- [x] No console errors/warnings during interaction
 
 **Dependencies:** Task 4
 
@@ -230,18 +230,19 @@ without crashing the view. Disable the button when there are no recommended
 items.
 
 **Acceptance criteria:**
-- [ ] Button is disabled when `recommendedItems` is empty or a request is
+- [x] Button is disabled when `recommendedItems` is empty or a request is
       already in flight
-- [ ] Successful submit shows the returned order number and expected
+- [x] Successful submit shows the returned order number and expected
       delivery date
-- [ ] Failed submit shows a visible error message and leaves the page
+- [x] Failed submit shows a visible error message and leaves the page
       usable (no unhandled promise rejection)
 
 **Verification:**
-- [ ] Manual/Playwright: full flow — set budget, see recommendations, place
-      order, see confirmation
-- [ ] Manual: stop the backend, attempt to place an order, confirm the error
-      state renders instead of a blank/broken page
+- [x] Manual/Playwright: full flow — set budget, see recommendations, place
+      order, see confirmation (order RO-2026-0002 placed for $9,954.73,
+      commit `e332cdc`)
+- [~] Manual: stop-the-backend error path not exercised live; the
+      `try/catch`/`orderError` banner is present and code-reviewed instead
 
 **Dependencies:** Task 5
 
@@ -253,9 +254,9 @@ items.
 ---
 
 ## Checkpoint: Restocking tab works end-to-end
-- [ ] Manual/Playwright: moving the slider updates the list; Place Order succeeds and shows confirmation
-- [ ] `npm run build` still succeeds
-- [ ] Review with human before starting Orders integration
+- [x] Manual/Playwright: moving the slider updates the list; Place Order succeeds and shows confirmation
+- [x] `npm run build` still succeeds
+- [x] Review with human before starting Orders integration (user asked to run all remaining tasks without further pauses)
 
 ---
 
@@ -272,19 +273,20 @@ delivery date / lead time. Follow the project's existing status-badge
 pattern (green/blue/yellow/red) for order status.
 
 **Acceptance criteria:**
-- [ ] Section is clearly labeled "Submitted Orders" and visually separated
+- [x] Section is clearly labeled "Submitted Orders" and visually separated
       from the existing customer-orders table
-- [ ] Every restock order placed from the Restocking tab appears here after
+- [x] Every restock order placed from the Restocking tab appears here after
       a page reload (proves it round-tripped through the backend, not just
       local state)
-- [ ] Delivery lead time is displayed per order (e.g. "Expected in 14 days"
+- [x] Delivery lead time is displayed per order (e.g. "Expected in 14 days"
       or the computed date)
-- [ ] Empty state (no restock orders yet) renders cleanly
+- [x] Empty state (no restock orders yet) renders cleanly
 
 **Verification:**
-- [ ] Manual/Playwright: place an order on the Restocking tab, navigate to
-      Orders, confirm it appears with correct lead time
-- [ ] Reload the Orders page, confirm the order persists (backend-held,
+- [x] Manual/Playwright: place an order on the Restocking tab, navigate to
+      Orders, confirm it appears with correct lead time (commit `3f81fe8`;
+      verified against the two orders placed live during Tasks 5/6/7 testing)
+- [x] Reload the Orders page, confirm the order persists (backend-held,
       not lost) for the remainder of the backend process's life
 
 **Dependencies:** Task 3 (endpoint), Task 6 (something to actually submit)
@@ -297,8 +299,19 @@ pattern (green/blue/yellow/red) for order status.
 ---
 
 ## Checkpoint: Full feature complete
-- [ ] Place a restocking order on the Restocking tab, confirm it appears in
+- [x] Place a restocking order on the Restocking tab, confirm it appears in
       the Orders tab's Submitted Orders section with correct lead time
-- [ ] `cd tests && uv run pytest backend/ -v` passes (no regressions)
-- [ ] `npm run build` succeeds
-- [ ] All acceptance criteria above met, ready for review
+      (final integration pass: order `RO-2026-0003`, $9,954.73, 16-day lead
+      time, survived a full page reload)
+- [x] `cd server && uv run pytest ../tests/backend/ -c ../tests/pytest.ini` passes (57/57, no regressions)
+- [x] `npm run build` succeeds
+- [x] All acceptance criteria above met, ready for review
+
+**Known pre-existing issue found during final smoke test (not part of this
+feature, not touched by it):** `Dashboard.vue` references a
+`PurchaseOrderModal` component that Vue can't resolve (`[Vue warn]: Failed
+to resolve component: PurchaseOrderModal`), tied to the "Create PO" buttons
+in the Overview page's Inventory Shortages table. Same root cause as the
+`/api/tasks` and `/api/purchase-orders` gap documented in
+`docs/architecture.html`'s "Notes & Gaps" section. Left untouched per scope
+discipline — flagged for a separate fix.
