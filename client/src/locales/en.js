@@ -129,6 +129,21 @@ export default {
     }
   },
 
+  // Restocking (submitted purchase orders, distinct from customer sales orders above)
+  restocking: {
+    title: 'Submitted Orders',
+    description: 'Purchase orders submitted to restock inventory from suppliers',
+    empty: 'No restock orders have been submitted yet.',
+    table: {
+      orderNumber: 'Order Number',
+      items: 'Items',
+      status: 'Status',
+      submittedDate: 'Submitted',
+      expectedDelivery: 'Expected Delivery',
+      totalCost: 'Total Cost'
+    }
+  },
+
   // Finance/Spending
   finance: {
     title: 'Finance Dashboard',
@@ -206,7 +221,8 @@ export default {
     backordered: 'Backordered',
     inStock: 'In Stock',
     lowStock: 'Low Stock',
-    adequate: 'Adequate'
+    adequate: 'Adequate',
+    submitted: 'Submitted'
   },
 
   // Trends

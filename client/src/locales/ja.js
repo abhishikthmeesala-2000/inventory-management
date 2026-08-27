@@ -129,6 +129,21 @@ export default {
     }
   },
 
+  // Restocking (submitted purchase orders, distinct from customer sales orders above)
+  restocking: {
+    title: '提出済みの補充注文',
+    description: '在庫を補充するためにサプライヤーへ提出された購入注文',
+    empty: 'まだ補充注文が提出されていません。',
+    table: {
+      orderNumber: '注文番号',
+      items: '品目',
+      status: 'ステータス',
+      submittedDate: '提出日',
+      expectedDelivery: '予定配達日',
+      totalCost: '合計コスト'
+    }
+  },
+
   // Finance/Spending
   finance: {
     title: '財務ダッシュボード',
@@ -206,7 +221,8 @@ export default {
     backordered: 'バックオーダー',
     inStock: '在庫あり',
     lowStock: '在庫僅少',
-    adequate: '適量'
+    adequate: '適量',
+    submitted: '提出済み'
   },
 
   // Trends
