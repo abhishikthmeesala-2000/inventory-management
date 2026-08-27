@@ -2,6 +2,8 @@
 Tests for the restocking feature: data model foundation, recommendation
 endpoint, and order submission/listing endpoints.
 """
+from datetime import datetime
+
 import pytest
 
 
@@ -137,3 +139,94 @@ class TestRestockRecommendations:
             assert "NONEXISTENT-SKU-999" not in skus
         finally:
             demand_forecasts.remove(fake_forecast)
+
+
+class TestRestockOrders:
+    """Task 3: POST/GET /api/restocking/orders."""
+
+    def test_post_creates_order_with_server_computed_totals(self, client):
+        """Server computes name/unit_cost/total_cost from inventory, ignoring any client-sent price."""
+        response = client.post("/api/restocking/orders", json={
+            "items": [{"sku": "PCB-001", "quantity": 10, "unit_cost": 999999}]
+        })
+        assert response.status_code == 200
+
+        order = response.json()
+        assert order["status"] == "Submitted"
+        assert len(order["items"]) == 1
+
+        item = order["items"][0]
+        assert item["sku"] == "PCB-001"
+        assert item["name"] == "Single Layer PCB Assembly"
+        assert item["unit_cost"] == 24.99  # server's price, not the bogus 999999 sent by the client
+        assert item["line_total"] == pytest.approx(249.90, abs=0.01)
+        assert order["total_cost"] == pytest.approx(249.90, abs=0.01)
+
+    def test_post_multiple_items_sums_total_cost(self, client):
+        """total_cost reflects every line item, computed server-side."""
+        response = client.post("/api/restocking/orders", json={
+            "items": [
+                {"sku": "PCB-001", "quantity": 5},
+                {"sku": "MCU-401", "quantity": 20},
+            ]
+        })
+        assert response.status_code == 200
+
+        expected_total = 5 * 24.99 + 20 * 8.25
+        assert response.json()["total_cost"] == pytest.approx(expected_total, abs=0.01)
+
+    def test_post_unknown_sku_returns_400(self, client):
+        """An order line referencing a SKU absent from inventory is rejected, not a 500."""
+        response = client.post("/api/restocking/orders", json={
+            "items": [{"sku": "NONEXISTENT-SKU-999", "quantity": 5}]
+        })
+        assert response.status_code == 400
+
+    def test_post_non_positive_quantity_returns_400(self, client):
+        response = client.post("/api/restocking/orders", json={
+            "items": [{"sku": "PCB-001", "quantity": 0}]
+        })
+        assert response.status_code == 400
+
+    def test_post_empty_items_returns_400(self, client):
+        response = client.post("/api/restocking/orders", json={"items": []})
+        assert response.status_code == 400
+
+    def test_expected_delivery_date_uses_longest_lead_time(self, client):
+        """expected_delivery_date = created_date + the longest lead_time_days among the order's items."""
+        # MCU-401 lead_time_days=5, SRV-301 lead_time_days=18 (see server/data/inventory.json)
+        response = client.post("/api/restocking/orders", json={
+            "items": [
+                {"sku": "MCU-401", "quantity": 5},
+                {"sku": "SRV-301", "quantity": 2},
+            ]
+        })
+        assert response.status_code == 200
+
+        order = response.json()
+        created = datetime.fromisoformat(order["created_date"])
+        expected = datetime.fromisoformat(order["expected_delivery_date"])
+        assert (expected - created).days == 18
+
+    def test_get_includes_previously_submitted_order(self, client):
+        """A submitted order shows up in the GET list."""
+        create_response = client.post("/api/restocking/orders", json={
+            "items": [{"sku": "DSP-403", "quantity": 3}]
+        })
+        assert create_response.status_code == 200
+        created_order_number = create_response.json()["order_number"]
+
+        list_response = client.get("/api/restocking/orders")
+        assert list_response.status_code == 200
+
+        order_numbers = [o["order_number"] for o in list_response.json()]
+        assert created_order_number in order_numbers
+
+    def test_get_returns_orders_in_submission_order(self, client):
+        """Orders appear in the order they were submitted."""
+        first = client.post("/api/restocking/orders", json={"items": [{"sku": "MCU-402", "quantity": 1}]}).json()
+        second = client.post("/api/restocking/orders", json={"items": [{"sku": "MCU-402", "quantity": 1}]}).json()
+
+        all_orders = client.get("/api/restocking/orders").json()
+        order_numbers = [o["order_number"] for o in all_orders]
+        assert order_numbers.index(first["order_number"]) < order_numbers.index(second["order_number"])

@@ -105,20 +105,29 @@ across the order's items, assign an `id`/`order_number`, set
 GET returns the full `restock_orders` list.
 
 **Acceptance criteria:**
-- [ ] POST with a valid item list returns 200 and the created order with
+- [x] POST with a valid item list returns 200 and the created order with
       server-computed totals (client-sent prices, if any, are ignored)
-- [ ] POST with an unknown SKU returns a 400 (not a 500)
-- [ ] `expected_delivery_date` equals `created_date` + the longest
+- [x] POST with an unknown SKU returns a 400 (not a 500)
+- [x] `expected_delivery_date` equals `created_date` + the longest
       `lead_time_days` among the order's items
-- [ ] GET returns every previously-submitted order for the life of the
+- [x] GET returns every previously-submitted order for the life of the
       process, in submission order
-- [ ] A server restart clears `restock_orders` back to empty (documents the
-      existing in-memory constraint, doesn't fight it)
+- [x] A server restart clears `restock_orders` back to empty (verified by
+      inspection: `restock_orders = []` is a plain in-memory list, never
+      written to `server/data/`, same guarantee as `purchase_orders` and
+      every other runtime-only list in this app — not worth a dedicated
+      process-restart test for a demo app)
 
 **Verification:**
-- [ ] Tests in `tests/backend/test_restocking.py` cover: successful submit,
-      unknown-SKU rejection, delivery-date computation, GET after POST
-- [ ] `cd tests && uv run pytest backend/test_restocking.py -v` passes
+- [x] Tests in `tests/backend/test_restocking.py` cover: successful submit,
+      multi-item total, unknown-SKU rejection, non-positive-quantity
+      rejection, empty-items rejection, delivery-date computation, GET
+      after POST, submission-order preservation
+- [x] `cd server && uv run pytest ../tests/backend/test_restocking.py -v -c ../tests/pytest.ini` — 17/17 pass
+- [x] Full suite regression check: 57/57 backend tests pass
+- [x] Manual check via curl against the running server: total cost correct,
+      delivery date uses the longer of two items' lead times, unknown SKU
+      → 400
 
 **Dependencies:** Task 1, Task 2 (shares helper/model code)
 
@@ -131,8 +140,8 @@ GET returns the full `restock_orders` list.
 ---
 
 ## Checkpoint: Backend complete
-- [ ] `cd tests && uv run pytest backend/ -v` passes (full suite, not just new tests — no regressions)
-- [ ] Manual smoke test via `http://localhost:8001/docs`: recommendations respect budget; submit → list round-trips
+- [x] `cd server && uv run pytest ../tests/backend/ -c ../tests/pytest.ini` passes (57/57, full suite, no regressions)
+- [x] Manual smoke test via curl: recommendations respect budget; submit → list round-trips
 - [ ] Review with human before starting frontend work
 
 ---

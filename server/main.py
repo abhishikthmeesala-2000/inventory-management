@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 from pydantic import BaseModel
+from datetime import datetime, timedelta
 from mock_data import inventory_items, orders, demand_forecasts, backlog_items, spending_summary, monthly_spending, category_spending, recent_transactions, purchase_orders, restock_orders
 
 app = FastAPI(title="Factory Inventory Management System")
@@ -247,6 +248,63 @@ def get_restocking_recommendations(budget: float = 0.0):
         "budget_used": budget_used,
         "recommended_items": recommended_items,
     }
+
+@app.post("/api/restocking/orders", response_model=RestockOrder)
+def create_restock_order(request: CreateRestockOrderRequest):
+    """Submit a restocking order.
+
+    Prices, names, and lead times are always looked up from inventory
+    server-side - any pricing info sent by the client is ignored.
+    """
+    inventory_by_sku = {item["sku"]: item for item in inventory_items}
+
+    if not request.items:
+        raise HTTPException(status_code=400, detail="Order must include at least one item")
+
+    order_items = []
+    lead_times = []
+    for entry in request.items:
+        sku = entry.get("sku")
+        quantity = entry.get("quantity")
+
+        if not isinstance(quantity, int) or quantity <= 0:
+            raise HTTPException(status_code=400, detail=f"Invalid quantity for SKU {sku}: {quantity}")
+
+        inventory_item = inventory_by_sku.get(sku)
+        if not inventory_item:
+            raise HTTPException(status_code=400, detail=f"Unknown SKU: {sku}")
+
+        line_total = round(quantity * inventory_item["unit_cost"], 2)
+        order_items.append({
+            "sku": sku,
+            "name": inventory_item["name"],
+            "quantity": quantity,
+            "unit_cost": inventory_item["unit_cost"],
+            "line_total": line_total,
+        })
+        lead_times.append(inventory_item["lead_time_days"])
+
+    created_date = datetime.now()
+    expected_delivery_date = created_date + timedelta(days=max(lead_times))
+    order_number_seq = len(restock_orders) + 1
+
+    order = {
+        "id": str(order_number_seq),
+        "order_number": f"RO-{created_date.year}-{order_number_seq:04d}",
+        "items": order_items,
+        "total_cost": round(sum(item["line_total"] for item in order_items), 2),
+        "status": "Submitted",
+        "created_date": created_date.isoformat(),
+        "expected_delivery_date": expected_delivery_date.isoformat(),
+    }
+
+    restock_orders.append(order)
+    return order
+
+@app.get("/api/restocking/orders", response_model=List[RestockOrder])
+def get_restock_orders():
+    """Get all submitted restocking orders, in submission order"""
+    return restock_orders
 
 @app.get("/api/dashboard/summary")
 def get_dashboard_summary(
